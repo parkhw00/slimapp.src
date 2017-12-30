@@ -53,12 +53,18 @@ $app->get('/gantt/{name}/init', function (Request $request, Response $response, 
     return $this->renderer->render($response, 'view.phtml', $args);
 });
 
+$app->get('/gantt/{name}/setting', function (Request $request, Response $response, array $args) {
+    $this->renderer->setTemplatePath(__DIR__.'/gantt');
+
+    return $this->renderer->render($response, 'setting.phtml', $args);
+});
+
 function getConnection($name)
 {
 	return new PDO("sqlite:".__DIR__."/gantt/db/$name");
 }
 
-$app->get('/gantt/data/{name}', 'getGanttData');
+$app->get('/gantt/{name}/data', 'getGanttData');
 function getGanttData($request, $response, $args)
 {
 	global $logger;
@@ -104,7 +110,7 @@ function getLink($data){
 }
 
 // create a new task
-$app->post("/gantt/data/{name}/task", 'addTask');
+$app->post("/gantt/{name}/data/task", 'addTask');
 function addTask($request, $response, $args)
 {
 	global $logger;
@@ -134,7 +140,7 @@ function addTask($request, $response, $args)
 }
 
 // update a task
-$app->put("/gantt/data/{name}/task/{id}", 'updateTask');
+$app->put("/gantt/{name}/data/task/{id}", 'updateTask');
 function updateTask($request, $response, $args)
 {
 	global $logger;
@@ -199,7 +205,7 @@ function updateOrder($taskId, $target, $db)
 }
 
 // delete a task
-$app->delete("/gantt/data/{name}/task/{id}", 'deleteTask');
+$app->delete("/gantt/{name}/data/task/{id}", 'deleteTask');
 function deleteTask($request, $response, $args)
 {
 	global $logger;
@@ -216,7 +222,7 @@ function deleteTask($request, $response, $args)
 }
 
 // create a new link
-$app->post("/gantt/data/{name}/link", 'addLink');
+$app->post("/gantt/{name}/data/link", 'addLink');
 function addLink($request, $response, $args)
 {
 	global $logger;
@@ -236,7 +242,7 @@ function addLink($request, $response, $args)
 }
 
 // update a link
-$app->put("/gantt/data/{name}/link/{id}", 'updateLink');
+$app->put("/gantt/{name}/data/link/{id}", 'updateLink');
 function updateLink($request, $response, $args)
 {
 	global $logger;
@@ -256,7 +262,7 @@ function updateLink($request, $response, $args)
 }
 
 // delete a link
-$app->delete("/gantt/data/{name}/link/{id}", 'deleteLink');
+$app->delete("/gantt/{name}/data/link/{id}", 'deleteLink');
 function deleteLink($request, $response, $args)
 {
 	global $logger;

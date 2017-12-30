@@ -24,9 +24,9 @@
     gantt.config.order_branch_free = true;
      
     gantt.init("gantt_here");
-    gantt.load("/gantt/data/<?php echo $name; ?>");
+    gantt.load("/gantt/<?php echo $name; ?>/data");
 
-    var dp = new gantt.dataProcessor("/gantt/data/<?php echo $name; ?>");
+    var dp = new gantt.dataProcessor("/gantt/<?php echo $name; ?>/data");
     dp.init(gantt);
     dp.setTransactionMode("REST");
   </script>
