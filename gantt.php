@@ -1,17 +1,19 @@
 <?php
 
+use Slim\Http\Request;
+use Slim\Http\Response;
+
+//date_default_timezone_set ("Asia/Seoul");
 $logger = $app->getContainer()['logger'];
+
+$app->get('/view', function (Request $request, Response $response, array $args) {
+	$this->renderer->setTemplatePath(__DIR__);
+	return $this->renderer->render($response, 'gantt_view.phtml', $args);
+});
 
 function getConnection()
 {
-	//$db = new PDO("mysql:host=localhost;dbname=gantt", "root", "root", [
-	//	PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-	//	PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
-	//]);
-
-	$db = new PDO("sqlite:".__DIR__."/../db/sample.db");
-
-	return $db;
+	return new PDO("sqlite:".__DIR__."/sample.db");
 }
 
 $app->get('/data', 'getGanttData');
