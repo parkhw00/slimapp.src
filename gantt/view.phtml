@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <head>
   <meta http-equiv="Content-type" content="text/html; charset=utf-8">
+  <title><?php echo $name; ?></title>
  
-  <script src="codebase/dhtmlxgantt.js"></script>
-  <link href="codebase/dhtmlxgantt.css" rel="stylesheet">
+  <script src="/codebase/dhtmlxgantt.js"></script>
+  <link href="/codebase/dhtmlxgantt.css" rel="stylesheet">
  
   <style type="text/css">
     html, body{
@@ -23,9 +24,9 @@
     gantt.config.order_branch_free = true;
      
     gantt.init("gantt_here");
-    gantt.load("/data");
+    gantt.load("/gantt/data/<?php echo $name; ?>");
 
-    var dp = new gantt.dataProcessor("/data");
+    var dp = new gantt.dataProcessor("/gantt/data/<?php echo $name; ?>");
     dp.init(gantt);
     dp.setTransactionMode("REST");
   </script>

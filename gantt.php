@@ -3,26 +3,72 @@
 use Slim\Http\Request;
 use Slim\Http\Response;
 
-//date_default_timezone_set ("Asia/Seoul");
 $logger = $app->getContainer()['logger'];
 
-$app->get('/view', function (Request $request, Response $response, array $args) {
-	$this->renderer->setTemplatePath(__DIR__);
-	return $this->renderer->render($response, 'gantt_view.phtml', $args);
+$app->get('/gantt/{name}', function (Request $request, Response $response, array $args) {
+    global $logger;
+
+    $this->renderer->setTemplatePath(__DIR__.'/gantt');
+
+    $dbname = __DIR__.'/gantt/db/'.$args['name'];
+    if (is_file ($dbname))
+	    $template = "view.phtml";
+    else
+    {
+	    $logger->debug ("no database.");
+	    $template = "view_nodb.phtml";
+    }
+
+    return $this->renderer->render($response, $template, $args);
 });
 
-function getConnection()
+$app->get('/gantt/{name}/init', function (Request $request, Response $response, array $args) {
+    global $logger;
+
+    $this->renderer->setTemplatePath(__DIR__.'/gantt');
+
+    $dbname = __DIR__.'/gantt/db/'.$args['name'];
+    if (!is_file ($dbname))
+    {
+	    $logger->info ("initialize database..");
+	    unlink ($dbname);
+	    $db = getConnection ($args['name']);
+	    $db->exec ("CREATE TABLE `gantt_links` (".
+		    " `id` INTEGER PRIMARY KEY AUTOINCREMENT,".
+		    " `source` int(11) NOT NULL,".
+		    " `target` int(11) NOT NULL,".
+		    " `type` varchar(1) NOT NULL)");
+	    $db->exec ("CREATE TABLE `gantt_tasks` (".
+		    "`id` INTEGER PRIMARY KEY AUTOINCREMENT,".
+		    "`text` varchar(255) NOT NULL,".
+		    "`start_date` datetime NOT NULL,".
+		    "`duration` int(11) NOT NULL,".
+		    "`progress` float NOT NULL,".
+		    "`parent` int(11) NOT NULL,".
+		    "`sortorder` int(11) NOT NULL".
+		    ")");
+	    $logger->info ("table created");
+    }
+
+    return $this->renderer->render($response, 'view.phtml', $args);
+});
+
+function getConnection($name)
 {
-	return new PDO("sqlite:".__DIR__."/sample.db");
+	return new PDO("sqlite:".__DIR__."/gantt/db/$name");
 }
 
-$app->get('/data', 'getGanttData');
-function getGanttData($request, $response, $args) {
-	$db = getConnection();
+$app->get('/gantt/data/{name}', 'getGanttData');
+function getGanttData($request, $response, $args)
+{
+	global $logger;
+
+	$db = getConnection($args['name']);
 	$result = [
 		"data"=> [],
 		"links"=> []
 	];
+	$logger->debug ("get data");
 
 	foreach($db->query("SELECT * FROM gantt_tasks ORDER BY sortorder ASC") as $row){
 		$row["open"] = true;
@@ -58,12 +104,13 @@ function getLink($data){
 }
 
 // create a new task
-$app->post("/data/task", 'addTask');
+$app->post("/gantt/data/{name}/task", 'addTask');
 function addTask($request, $response, $args)
 {
 	global $logger;
+
 	$task = getTask($request->getParsedBody());
-	$db = getConnection();
+	$db = getConnection($args['name']);
 
 	$maxOrderQuery = "SELECT MAX(sortorder) AS maxOrder FROM gantt_tasks";
 	$statement = $db->prepare($maxOrderQuery);
@@ -87,7 +134,7 @@ function addTask($request, $response, $args)
 }
 
 // update a task
-$app->put("/data/task/{id}", 'updateTask');
+$app->put("/gantt/data/{name}/task/{id}", 'updateTask');
 function updateTask($request, $response, $args)
 {
 	global $logger;
@@ -95,7 +142,7 @@ function updateTask($request, $response, $args)
 	$sid = $request->getAttribute("id");
 	$params = $request->getParsedbody();
 	$task = getTask($params);
-	$db = getConnection();
+	$db = getConnection($args['name']);
 	$query = "UPDATE gantt_tasks ".
 		"SET text = :text, start_date = :start_date, duration = :duration,". 
 		"progress = :progress, parent = :parent ".
@@ -152,13 +199,13 @@ function updateOrder($taskId, $target, $db)
 }
 
 // delete a task
-$app->delete("/data/task/{id}", 'deleteTask');
+$app->delete("/gantt/data/{name}/task/{id}", 'deleteTask');
 function deleteTask($request, $response, $args)
 {
 	global $logger;
 
 	$sid = $request->getAttribute("id");
-	$db = getConnection();
+	$db = getConnection($args['name']);
 	$query = "DELETE FROM gantt_tasks WHERE id = :sid";
 	$logger->debug (var_export (array($query, $sid), true));
 
@@ -169,13 +216,13 @@ function deleteTask($request, $response, $args)
 }
 
 // create a new link
-$app->post("/data/link", 'addLink');
+$app->post("/gantt/data/{name}/link", 'addLink');
 function addLink($request, $response, $args)
 {
 	global $logger;
 
 	$link = getLink($request->getParsedBody());
-	$db = getConnection();
+	$db = getConnection($args['name']);
 	$query = "INSERT INTO gantt_links(source, target, type) ".
 		"VALUES (:source,:target,:type)";
 	$logger->debug (var_export (array($query, $link), true));
@@ -189,14 +236,14 @@ function addLink($request, $response, $args)
 }
 
 // update a link
-$app->put("/data/link/{id}", 'updateLink');
+$app->put("/gantt/data/{name}/link/{id}", 'updateLink');
 function updateLink($request, $response, $args)
 {
 	global $logger;
 
 	$sid = $request->getAttribute("id");
 	$link = getLink($request->getParsedBody());
-	$db = getConnection();
+	$db = getConnection($args['name']);
 	$query = "UPDATE gantt_links SET ".
 		"source = :source, target = :target, type = :type ".
 		"WHERE id = :sid";
@@ -209,13 +256,13 @@ function updateLink($request, $response, $args)
 }
 
 // delete a link
-$app->delete("/data/link/{id}", 'deleteLink');
+$app->delete("/gantt/data/{name}/link/{id}", 'deleteLink');
 function deleteLink($request, $response, $args)
 {
 	global $logger;
 
 	$sid = $request->getAttribute("id");
-	$db = getConnection();
+	$db = getConnection($args['name']);
 	$query = "DELETE FROM gantt_links WHERE id = :sid";
 	$logger->debug (var_export (array($query, $sid), true));
 
