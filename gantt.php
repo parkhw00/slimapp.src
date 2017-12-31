@@ -5,6 +5,19 @@ use Slim\Http\Response;
 
 $logger = $app->getContainer()['logger'];
 
+function setArgs ($args, $db = false)
+{
+	global $logger;
+
+	if ($db === false)
+		$db = getConnection($args['name']);
+
+	$args['workday'] = $db->query("SELECT * FROM workday")->fetchObject();
+	$args['holidays'] = $db->query("SELECT * FROM holidays");
+
+	return $args;
+}
+
 $app->get('/gantt/{name}', function (Request $request, Response $response, array $args) {
     global $logger;
 
@@ -19,6 +32,8 @@ $app->get('/gantt/{name}', function (Request $request, Response $response, array
 	    $template = "view_nodb.phtml";
     }
 
+    $args = setArgs ($args);
+
     return $this->renderer->render($response, $template, $args);
 });
 
@@ -28,33 +43,58 @@ $app->get('/gantt/{name}/init', function (Request $request, Response $response, 
     $this->renderer->setTemplatePath(__DIR__.'/gantt');
 
     $dbname = __DIR__.'/gantt/db/'.$args['name'];
+    $db = false;
     if (!is_file ($dbname))
     {
 	    $logger->info ("initialize database..");
 	    unlink ($dbname);
 	    $db = getConnection ($args['name']);
-	    $db->exec ("CREATE TABLE `gantt_links` (".
-		    " `id` INTEGER PRIMARY KEY AUTOINCREMENT,".
-		    " `source` int(11) NOT NULL,".
-		    " `target` int(11) NOT NULL,".
-		    " `type` varchar(1) NOT NULL)");
-	    $db->exec ("CREATE TABLE `gantt_tasks` (".
-		    "`id` INTEGER PRIMARY KEY AUTOINCREMENT,".
-		    "`text` varchar(255) NOT NULL,".
-		    "`start_date` datetime NOT NULL,".
-		    "`duration` int(11) NOT NULL,".
-		    "`progress` float NOT NULL,".
-		    "`parent` int(11) NOT NULL,".
-		    "`sortorder` int(11) NOT NULL".
-		    ")");
+	    $sqls = array(
+"CREATE TABLE `gantt_links` (
+    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+    `source` int(11) NOT NULL,
+    `target` int(11) NOT NULL,
+    `type` varchar(1) NOT NULL)",
+"CREATE TABLE `gantt_tasks` (
+    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+    `text` varchar(255) NOT NULL,
+    `start_date` datetime NOT NULL,
+    `duration` int(11) NOT NULL,
+    `progress` float NOT NULL,
+    `parent` int(11) NOT NULL,
+    `sortorder` int(11) NOT NULL
+)",
+"CREATE TABLE `holidays` (
+    `date` datetime NOT NULL
+)",
+"CREATE TABLE `workday` (
+    `day0` BIT,
+    `day1` BIT,
+    `day2` BIT,
+    `day3` BIT,
+    `day4` BIT,
+    `day5` BIT,
+    `day6` BIT
+)",
+"INSERT INTO `workday` VALUES (0,1,1,1,1,1,0)",
+	    );
+	    foreach ($sqls as $sql)
+	    {
+		    $logger->info ("sql : $sql");
+		    $db->exec ($sql);
+	    }
 	    $logger->info ("table created");
     }
+
+    $args = setArgs ($args, $db);
 
     return $this->renderer->render($response, 'view.phtml', $args);
 });
 
 $app->get('/gantt/{name}/setting', function (Request $request, Response $response, array $args) {
     $this->renderer->setTemplatePath(__DIR__.'/gantt');
+
+    $args = setArgs ($args);
 
     return $this->renderer->render($response, 'setting.phtml', $args);
 });

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<head>
+  <meta http-equiv="Content-type" content="text/html; charset=utf-8">
+ 
+  <script src="codebase/dhtmlxgantt.js"></script>
+  <link href="codebase/dhtmlxgantt.css" rel="stylesheet">
+ 
+  <style type="text/css">
+    html, body{
+      height:100%;
+      padding:0px;
+      margin:0px;
+      overflow: hidden;
+    }
+
+  </style>
+</head>
+<body>
+<h1><?php echo $name; ?> 설정</h1>
+<h2>쉬는 날</h2>
+<table>
+  <tr>
+    <th>일
+    <th>월
+    <th>화
+    <th>수
+    <th>목
+    <th>금
+    <th>토
+  </tr>
+  <tr>
+    <td><input type="checkbox" name="day0" checked>
+    <td><input type="checkbox" name="day1">
+    <td><input type="checkbox" name="day2">
+    <td><input type="checkbox" name="day3">
+    <td><input type="checkbox" name="day4">
+    <td><input type="checkbox" name="day5">
+    <td><input type="checkbox" name="day6" checked>
+  </tr>
+</table>
+<div id="calendar"></div>
+<script type="text/javascript">
+
+var holidays = [
+	new Date(),
+];
+
+</script>
+</body>
