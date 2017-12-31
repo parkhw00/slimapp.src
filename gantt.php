@@ -12,8 +12,8 @@ function setArgs ($args, $db = false)
 	if ($db === false)
 		$db = getConnection($args['name']);
 
-	$args['workday'] = $db->query("SELECT * FROM workday")->fetchObject();
-	$args['holidays'] = $db->query("SELECT * FROM holidays");
+	$args['workday'] = get_object_vars ($db->query("SELECT * FROM workday")->fetchObject());
+	$args['holidays'] = $db->query("SELECT * FROM holidays")->fetchAll();
 
 	return $args;
 }
@@ -77,6 +77,7 @@ $app->get('/gantt/{name}/init', function (Request $request, Response $response, 
     `day6` BIT
 )",
 "INSERT INTO `workday` VALUES (0,1,1,1,1,1,0)",
+"INSERT INTO `holidays` VALUES ('2018-01-01 00:00:00')"
 	    );
 	    foreach ($sqls as $sql)
 	    {

@@ -1,49 +1,193 @@
 <!DOCTYPE html>
 <head>
   <meta http-equiv="Content-type" content="text/html; charset=utf-8">
- 
-  <script src="codebase/dhtmlxgantt.js"></script>
-  <link href="codebase/dhtmlxgantt.css" rel="stylesheet">
- 
   <style type="text/css">
-    html, body{
-      height:100%;
-      padding:0px;
-      margin:0px;
-      overflow: hidden;
-    }
-
+#calendar th, #calendar td {
+  text-align: center;
+}
   </style>
 </head>
 <body>
 <h1><?php echo $name; ?> 설정</h1>
-<h2>쉬는 날</h2>
-<table>
-  <tr>
-    <th>일
-    <th>월
-    <th>화
-    <th>수
-    <th>목
-    <th>금
-    <th>토
-  </tr>
-  <tr>
-    <td><input type="checkbox" name="day0" checked>
-    <td><input type="checkbox" name="day1">
-    <td><input type="checkbox" name="day2">
-    <td><input type="checkbox" name="day3">
-    <td><input type="checkbox" name="day4">
-    <td><input type="checkbox" name="day5">
-    <td><input type="checkbox" name="day6" checked>
-  </tr>
-</table>
+<h2>일하는 요일</h2>
+<div id="workday"></div>
+<h2>휴일</h2>
 <div id="calendar"></div>
+<div id="holiday_list"></div>
 <script type="text/javascript">
-
 var holidays = [
-	new Date(),
+<?php
+foreach ($holidays as $holiday)
+{
+  $d = date_parse ($holiday[0]);
+  echo '  new Date('.$d['year'].','.($d['month']-1).','.$d['day']."),\n";
+}
+?>
 ];
+var workday = [
+<?php
+foreach ($workday as $day)
+{
+  if ($day)
+    echo "  true,\n";
+  else
+    echo "  false,\n";
+}
+?>
+];
+var cur_year;
+var cur_mont;
 
+function check_workday(ele, day)
+{
+  if (ele.checked)
+  {
+    workday[day] = true;
+    document.getElementById('day'+day).style.color = 'black';
+  }
+  else
+  {
+    workday[day] = false;
+    document.getElementById('day'+day).style.color = 'red';
+  }
+}
+
+function update_workday ()
+{
+  var out = "";
+
+  out += "<table><tr><th>일<th>월<th>화<th>수<th>목<th>금<th>토<tr>";
+  for (var i=0; i<7; i++)
+  {
+    out += "<td><input type=\"checkbox\" name=\"day" + i + "\" onclick=\"check_workday(this, "+i+")\"";
+    if (workday[i])
+      out += " checked";
+    out += ">";
+  }
+  out += "</tr></table>"
+
+  document.getElementById("workday").innerHTML = out;
+}
+
+function is_holiday (y, m, d, remove)
+{
+  for (var i=0; i<holidays.length; i++)
+  {
+    if (holidays[i].getFullYear() != y)
+      continue;
+    if (holidays[i].getMonth() != m)
+      continue;
+    if (holidays[i].getDate() != d)
+      continue;
+
+    if (remove !== 'undefined' && remove)
+      holidays.splice (i, 1);
+
+    return true;
+  }
+
+  return false;
+}
+
+function toggle_holiday(d)
+{
+  if (is_holiday (cur_year, cur_mont, d))
+  {
+    is_holiday (cur_year, cur_mont, d, true);
+    document.getElementById('date'+d).style.color = 'black';
+  }
+  else
+  {
+    holidays.push (new Date(cur_year, cur_mont, d));
+    document.getElementById('date'+d).style.color = 'red';
+  }
+  update_list();
+}
+
+function update_cal (start_date)
+{
+  var out = "";
+
+  var y = start_date.getFullYear();
+  var m = start_date.getMonth();
+  var d = start_date.getDate();
+
+  var start_day = (new Date(y, m, 1)).getDay();
+  var max_dat = (new Date(y, m+1, 0)).getDate();
+  var dat = 1;
+
+  var day_name = [ "일", "월", "화", "수", "목", "금", "토" ];
+
+  var i;
+
+  out += "<table><tr><td colspan=7>" + (start_date.getMonth() + 1) + "월";
+  out += "<tr>";
+  for (i=0; i<7; i++)
+  {
+    out += "<td id='day"+i+"'";
+    if (!workday[i])
+      out += " style='color: red;'";
+    out += ">" + day_name[i];
+  }
+  out += "<tr>";
+  for (i=0; i<start_day; i++)
+    out += "<td>&nbsp;";
+  for (i=start_day; i<7; i++)
+  {
+    out += "<td id='date" + dat + "' onclick='toggle_holiday("+dat+")'";
+    if (is_holiday (y, m, dat))
+      out += " style=\"color: red;\"";
+    out += ">" + dat;
+
+    dat ++;
+  }
+  while (dat <= max_dat)
+  {
+    out += "<tr>";
+    for (i=0; i<7 && dat <= max_dat; i++)
+    {
+      out += "<td id='date" + dat + "' onclick='toggle_holiday("+dat+")'";
+      if (is_holiday (y, m, dat))
+        out += " style=\"color: red;\"";
+      out += ">" + dat;
+
+      dat ++;
+    }
+  }
+  for (; i<7; i++)
+    out += "<td>&nbsp;";
+  out += "</table>";
+
+  cur_year = y;
+  cur_mont = m;
+
+  document.getElementById("calendar").innerHTML = out;
+}
+
+function update_list ()
+{
+  var out = "";
+
+  if (holidays.length > 0)
+  {
+    out += "<ul>";
+    for (var i=0; i<holidays.length; i++)
+    {
+      out += "<li>" + holidays[i].getFullYear();
+      out += "-" + (1+holidays[i].getMonth());
+      out += "-" + holidays[i].getDate();
+    }
+    out += "</ul>";
+  }
+
+  document.getElementById("holiday_list").innerHTML = out;
+}
+
+(function()
+{
+  update_workday();
+  update_cal(new Date());
+  update_list();
+})();
 </script>
 </body>
