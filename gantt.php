@@ -4,6 +4,7 @@ use Slim\Http\Request;
 use Slim\Http\Response;
 
 $logger = $app->getContainer()['logger'];
+$timezone = "Asia/Seoul";
 
 function setArgs ($args, $db = false)
 {
@@ -12,8 +13,8 @@ function setArgs ($args, $db = false)
 	if ($db === false)
 		$db = getConnection($args['name']);
 
-	$args['workday'] = get_object_vars ($db->query("SELECT * FROM workday")->fetchObject());
-	$args['holidays'] = $db->query("SELECT * FROM holidays")->fetchAll();
+	$args['workday'] = get_object_vars ($db->query("SELECT day0, day1, day2, day3, day4, day5, day6 FROM workday")->fetchObject());
+	$args['holidays'] = $db->query("SELECT date FROM holidays")->fetchAll();
 
 	return $args;
 }
@@ -57,6 +58,7 @@ $app->get('/gantt/{name}/init', function (Request $request, Response $response, 
     `type` varchar(1) NOT NULL)",
 "CREATE TABLE `gantt_tasks` (
     `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+    `user` int(11) NOT NULL,
     `text` varchar(255) NOT NULL,
     `start_date` datetime NOT NULL,
     `duration` int(11) NOT NULL,
@@ -65,9 +67,11 @@ $app->get('/gantt/{name}/init', function (Request $request, Response $response, 
     `sortorder` int(11) NOT NULL
 )",
 "CREATE TABLE `holidays` (
+    `user` int(11) NOT NULL,
     `date` datetime NOT NULL
 )",
 "CREATE TABLE `workday` (
+    `user` int(11) NOT NULL,
     `day0` BIT,
     `day1` BIT,
     `day2` BIT,
@@ -75,6 +79,10 @@ $app->get('/gantt/{name}/init', function (Request $request, Response $response, 
     `day4` BIT,
     `day5` BIT,
     `day6` BIT
+)",
+"CREATE TABLE `user` (
+    `user` INTEGER PRIMARY KEY AUTOINCREMENT,
+    `name` varchar(255) NOT NULL
 )",
 "INSERT INTO `workday` VALUES (0,1,1,1,1,1,0)",
 "INSERT INTO `holidays` VALUES ('2018-01-01 00:00:00')"
@@ -92,12 +100,29 @@ $app->get('/gantt/{name}/init', function (Request $request, Response $response, 
     return $this->renderer->render($response, 'view.phtml', $args);
 });
 
-$app->get('/gantt/{name}/setting', function (Request $request, Response $response, array $args) {
+$app->get('/gantt/{name}/calendar', function (Request $request, Response $response, array $args) {
+    global $logger;
+
     $this->renderer->setTemplatePath(__DIR__.'/gantt');
 
     $args = setArgs ($args);
+    $logger->debug ("get  args : ".var_export ($args, true));
 
-    return $this->renderer->render($response, 'setting.phtml', $args);
+    return $this->renderer->render($response, 'calendar.phtml', $args);
+});
+
+$app->post('/gantt/{name}/calendar', function (Request $request, Response $response, array $args) {
+    global $logger;
+
+    $db = getConnection ($args['name']);
+
+    $logger->debug ("workday : ".$request->getParam("workday"));
+    $logger->debug ("holidays : ".$request->getParam("holidays"));
+
+    $args = setArgs ($args);
+
+    $this->renderer->setTemplatePath(__DIR__.'/gantt');
+    return $this->renderer->render($response, 'calendar.phtml', $args);
 });
 
 function getConnection($name)

@@ -9,12 +9,18 @@
 </head>
 <body>
 <h1><?php echo $name; ?> 설정</h1>
+<form action="/gantt/<?php echo $name; ?>/calendar" method=post>
+<input type=hidden name=workday value="0,1,1,1,1,1,0">
+<input type=hidden name=holidays value="">
+<input type=submit>
+</form>
 <h2>일하는 요일</h2>
 <div id="workday"></div>
 <h2>휴일</h2>
 <div id="calendar"></div>
 <div id="holiday_list"></div>
 <script type="text/javascript">
+
 var holidays = [
 <?php
 foreach ($holidays as $holiday)
@@ -29,9 +35,9 @@ var workday = [
 foreach ($workday as $day)
 {
   if ($day)
-    echo "  true,\n";
+    echo "  1,\n";
   else
-    echo "  false,\n";
+    echo "  0,\n";
 }
 ?>
 ];
@@ -42,12 +48,12 @@ function check_workday(ele, day)
 {
   if (ele.checked)
   {
-    workday[day] = true;
+    workday[day] = 1;
     document.getElementById('day'+day).style.color = 'black';
   }
   else
   {
-    workday[day] = false;
+    workday[day] = 0;
     document.getElementById('day'+day).style.color = 'red';
   }
 }
@@ -80,7 +86,7 @@ function is_holiday (y, m, d, remove)
     if (holidays[i].getDate() != d)
       continue;
 
-    if (remove !== 'undefined' && remove)
+    if (remove !== undefined && remove)
       holidays.splice (i, 1);
 
     return true;
@@ -108,9 +114,37 @@ function update_cal (start_date)
 {
   var out = "";
 
-  var y = start_date.getFullYear();
-  var m = start_date.getMonth();
-  var d = start_date.getDate();
+  var y;
+  var m;
+
+  if (start_date !== undefined)
+  {
+    y = start_date.getFullYear();
+    m = start_date.getMonth();
+  }
+  else
+  {
+    y = cur_year;
+    m = cur_mont;
+  }
+
+  var prev_y, prev_m, next_y, next_m;
+
+  next_y = prev_y = y;
+
+  prev_m = m-1;
+  if (prev_m == 0)
+  {
+    prev_y --;
+    prev_m = 11;
+  }
+
+  next_m = m+1;
+  if (next_m == 12)
+  {
+    next_y ++;
+    next_m = 0;
+  }
 
   var start_day = (new Date(y, m, 1)).getDay();
   var max_dat = (new Date(y, m+1, 0)).getDate();
@@ -120,7 +154,12 @@ function update_cal (start_date)
 
   var i;
 
-  out += "<table><tr><td colspan=7>" + (start_date.getMonth() + 1) + "월";
+  out += "<table><tr>";
+  out += "<td colspan=2 onclick='cur_year="+prev_y+"; cur_mont="+prev_m+"; update_cal();'>&lt;";
+  out += "<td colspan=3>";
+  out += (m + 1);
+  out += "월";
+  out += "<td colspan=2 onclick='cur_year="+next_y+"; cur_mont="+next_m+"; update_cal();'>&gt;";
   out += "<tr>";
   for (i=0; i<7; i++)
   {
