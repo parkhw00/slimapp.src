@@ -13,8 +13,9 @@ function setArgs ($args, $db = false)
 	if ($db === false)
 		$db = getConnection($args['name']);
 
-	$args['workday'] = get_object_vars ($db->query("SELECT day0, day1, day2, day3, day4, day5, day6 FROM workday")->fetchObject());
-	$args['holidays'] = $db->query("SELECT date FROM holidays")->fetchAll();
+	$args['workday'] = get_object_vars ($db->query("SELECT day0, day1, day2, day3, day4, day5, day6 FROM workday WHERE user = 0")->fetchObject());
+	$args['holidays'] = $db->query("SELECT date FROM holidays WHERE user = 0 ORDER BY date ASC")->fetchAll();
+        $args['users'] = $db->query("SELECT * FROM user ORDER BY name ASC")->fetchAll();
 
 	return $args;
 }
@@ -81,11 +82,15 @@ $app->get('/gantt/{name}/init', function (Request $request, Response $response, 
     `day6` BIT
 )",
 "CREATE TABLE `user` (
-    `user` INTEGER PRIMARY KEY AUTOINCREMENT,
+    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
     `name` varchar(255) NOT NULL
 )",
-"INSERT INTO `workday` VALUES (0,1,1,1,1,1,0)",
-"INSERT INTO `holidays` VALUES ('2018-01-01 00:00:00')"
+"INSERT INTO `workday` VALUES (0,0,1,1,1,1,1,0)",
+"INSERT INTO `user` VALUES (0,'N/A')",
+"INSERT INTO `user`(name) VALUES ('Jessica')",
+"INSERT INTO `user`(name) VALUES ('박현우')",
+"INSERT INTO `user`(name) VALUES ('이순신')",
+"INSERT INTO `user`(name) VALUES ('김유신')",
 	    );
 	    foreach ($sqls as $sql)
 	    {
@@ -103,15 +108,78 @@ $app->get('/gantt/{name}/init', function (Request $request, Response $response, 
 $app->get('/gantt/{name}/calendar', function (Request $request, Response $response, array $args) {
     global $logger;
 
-    $this->renderer->setTemplatePath(__DIR__.'/gantt');
-
     $args = setArgs ($args);
     $logger->debug ("get  args : ".var_export ($args, true));
 
+    $this->renderer->setTemplatePath(__DIR__.'/gantt');
     return $this->renderer->render($response, 'calendar.phtml', $args);
 });
 
 $app->post('/gantt/{name}/calendar', function (Request $request, Response $response, array $args) {
+    global $logger;
+    global $timezone;
+
+    $db = getConnection ($args['name']);
+
+    $logger->debug ("workday : ".$request->getParam("workday"));
+    $logger->debug ("holidays : ".$request->getParam("holidays"));
+
+    // workday
+    $workday_key = array();
+    for ($i=0; $i<7; $i++)
+      $workday_key[$i] = ":day$i";
+    $workday = array_combine ($workday_key, explode (",", $request->getParam ("workday")));
+
+    $logger->debug ("workday : ".var_export ($workday, true));
+
+    $query="UPDATE workday SET user = 0, ".
+      "day0 = :day0, ".
+      "day1 = :day1, ".
+      "day2 = :day2, ".
+      "day3 = :day3, ".
+      "day4 = :day4, ".
+      "day5 = :day5, ".
+      "day6 = :day6 ".
+      "WHERE user = 0";
+    $logger->debug (var_export (array($query, $task), true));
+    $db->prepare($query)->execute($workday);
+
+    // holidays
+    $query = "DELETE FROM holidays WHERE user = :user";
+    $db->prepare($query)->execute([":user"=>0]);
+
+    $holidays = explode (",", $request->getParam ("holidays"));
+    foreach ($holidays as $holiday)
+    {
+      if ($holiday == '')
+        continue;
+
+      $h = new DateTime($holiday);
+      $h->setTimezone(new DateTimeZone($timezone));
+      $hStr = $h->format("Y-m-d H:i:s");
+      $logger->debug ("holiday : ".$hStr);
+
+      $query = "INSERT INTO holidays(user, date) VALUES (:user, :date)";
+      $db->prepare($query)->execute([":user"=>0, ":date"=>$hStr]);
+    }
+
+    $args = setArgs ($args);
+
+    $this->renderer->setTemplatePath(__DIR__.'/gantt');
+    return $this->renderer->render($response, 'calendar.phtml', $args);
+});
+
+$app->get('/gantt/{name}/user', function (Request $request, Response $response, array $args) {
+    global $logger;
+
+    $args = setArgs ($args);
+    $logger->debug ("get  args : ".var_export ($args, true));
+
+    $this->renderer->setTemplatePath(__DIR__.'/gantt');
+    return $this->renderer->render($response, 'user.phtml', $args);
+});
+
+$app->post('/gantt/{name}/user', function (Request $request, Response $response, array $args) {
     global $logger;
 
     $db = getConnection ($args['name']);
@@ -158,6 +226,7 @@ function getGanttData($request, $response, $args)
 function getTask($data)
 {
 	return [
+		':user' => $data["user"],
 		':text' => $data["text"],
 		':start_date' => $data["start_date"],
 		':duration' => $data["duration"],
@@ -194,8 +263,8 @@ function addTask($request, $response, $args)
 
 	$task[":sortorder"] = $maxOrder + 1;
 
-	$query="INSERT INTO gantt_tasks(text,start_date,duration,progress,parent,sortorder)".
-		"VALUES (:text,:start_date,:duration,:progress,:parent, :sortorder)";
+	$query="INSERT INTO gantt_tasks(user,text,start_date,duration,progress,parent,sortorder) ".
+		"VALUES (:user,:text,:start_date,:duration,:progress,:parent, :sortorder)";
 	$logger->debug (var_export (array($query, $task), true));
 	$db->prepare($query)->execute($task);
 
@@ -216,7 +285,7 @@ function updateTask($request, $response, $args)
 	$task = getTask($params);
 	$db = getConnection($args['name']);
 	$query = "UPDATE gantt_tasks ".
-		"SET text = :text, start_date = :start_date, duration = :duration,". 
+		"SET user = :user, text = :text, start_date = :start_date, duration = :duration,". 
 		"progress = :progress, parent = :parent ".
 		"WHERE id = :sid";
 	//$logger->debug (var_export ($request, true));

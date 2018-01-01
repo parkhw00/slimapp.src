@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<head>
+  <meta http-equiv="Content-type" content="text/html; charset=utf-8">
+  <style type="text/css">
+#calendar th, #calendar td {
+  text-align: center;
+}
+  </style>
+</head>
+<body>
+<h1><?php echo $name; ?> 근무자 설정</h1>
+<form action="/gantt/<?php echo $name; ?>/user" method=post>
+<input type=hidden name=users_add value="">
+<input type=hidden name=users_del value="">
+<input type=submit>
+</form>
+<h2>근무자 목록</h2>
+새로운 근무자 <input type=text>
+<div id="users"></div>
+<script type="text/javascript">
+
+var users = [
+<?php
+foreach ($users as $user)
+{
+  $user_id = $user["id"];
+  $user_name = $user["name"];
+
+  if ($user_id > 0)
+    echo "  { id:$user_id, name:\"$user_name\" },\n";
+}
+?>
+];
+
+function update_list()
+{
+  var out = "";
+
+  out += "<ul>\n";
+  for (var i=0; i<users.length; i++)
+  {
+    out += "  <li>" + users[i]['name'] + " <a href=\"#\" onclick=\"del_user('" + users[i]['name'] + "');\">삭제</a>";
+    if (users[i]['id'] > 0)
+      out += " <a href=\"/gantt/<?php echo $name; ?>/calendar/" + users[i]['id'] + "\">달력</a>";
+  }
+  out += "</ul>\n";
+
+  document.getElementById("users").innerHTML = out;
+}
+
+function add_user(name)
+{
+}
+
+function del_user(name)
+{
+}
+
+(function()
+{
+  update_list();
+})();
+</script>
+</body>

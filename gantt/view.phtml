@@ -35,7 +35,7 @@ html, body{
     gantt.load("/gantt/<?php echo $name; ?>/data");
 
     gantt.templates.task_cell_class = function(task, date){
-      if(!gantt.isWorkTime(date))
+      if(!gantt.isWorkTime({date:date, task:task}))
         return "week_end";
       return "";
     };
@@ -53,6 +53,54 @@ foreach ($workday as $day)
     {
       gantt.setWorkTime ({day:i, hours: workday[i]});
     }
+
+    gantt.serverList("user", [
+<?php
+foreach ($users as $user)
+{
+  $user_id = $user["id"];
+  $user_name = $user["name"];
+
+  echo "      {key:'$user_id', label: \"$user_name\"},\n";
+}
+?>
+    ]);
+
+    function byId(list, id) {
+      for(var i = 0; i < list.length; i++) {
+        if(list[i].key == id)
+          return list[i].label || "";
+      }
+      return "";
+    }
+
+    gantt.config.columns = [
+      {name:"text", label:"Task name", tree:true, width:170 },
+      {name:"owner", width:80, align: "center", template: function(item) { return byId(gantt.serverList('user'), item.user) }, width: 60},
+      {name:"start_date", align: "center", width: 90},
+      {name:"time", align: "center" , width: 60, template: function(task) {
+        var days = 0;
+        var date = task.start_date;
+        while(date < task.end_date) {
+          days++;
+          date = gantt.date.add(date, 1, "day");
+        }
+        return days + "";
+      }},
+        {name:"duration", align: "center" , width: 60},
+        {name:"add", width:40}
+    ];
+
+    gantt.config.lightbox.sections = [
+      {name: "description", height: 38, map_to: "text", type: "textarea", focus: true},
+      {name: "owner", height: 22, map_to: "user", type: "select", options: gantt.serverList("user")},
+      {name: "time", type: "duration", map_to: "auto"}
+    ];
+
+    gantt.locale.labels.column_owner =
+      gantt.locale.labels.section_owner = "Owner";
+    gantt.locale.labels.column_duration = "Effort";
+    gantt.locale.labels.column_time = "Time";
 
     var dp = new gantt.dataProcessor("/gantt/<?php echo $name; ?>/data");
     dp.init(gantt);

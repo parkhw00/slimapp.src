@@ -9,10 +9,10 @@
 </head>
 <body>
 <h1><?php echo $name; ?> 설정</h1>
-<form action="/gantt/<?php echo $name; ?>/calendar" method=post>
-<input type=hidden name=workday value="0,1,1,1,1,1,0">
-<input type=hidden name=holidays value="">
-<input type=submit>
+<form id="submit_form" action="/gantt/<?php echo $name; ?>/calendar" method=post>
+<input id="submit_workday" type=hidden name=workday value="0,1,1,1,1,1,0">
+<input id="submit_holidays" type=hidden name=holidays value="">
+<input type=submit onclick="submit_click();">
 </form>
 <h2>일하는 요일</h2>
 <div id="workday"></div>
@@ -30,19 +30,22 @@ foreach ($holidays as $holiday)
 }
 ?>
 ];
-var workday = [
-<?php
-foreach ($workday as $day)
-{
-  if ($day)
-    echo "  1,\n";
-  else
-    echo "  0,\n";
-}
-?>
-];
+var workday = [ <?php
+echo join (",", $workday);
+?> ];
 var cur_year;
 var cur_mont;
+
+function submit_click()
+{
+  console.log ("submit click");
+
+  document.getElementById("submit_workday").value = workday.join(",");
+  document.getElementById("submit_holidays").value = holidays.join(",");
+
+  console.log ("workday :" + document.getElementById("submit_workday").value);
+  console.log ("holidays :" + document.getElementById("submit_holidays").value);
+}
 
 function check_workday(ele, day)
 {
@@ -133,7 +136,7 @@ function update_cal (start_date)
   next_y = prev_y = y;
 
   prev_m = m-1;
-  if (prev_m == 0)
+  if (prev_m < 0)
   {
     prev_y --;
     prev_m = 11;
@@ -157,8 +160,9 @@ function update_cal (start_date)
   out += "<table><tr>";
   out += "<td colspan=2 onclick='cur_year="+prev_y+"; cur_mont="+prev_m+"; update_cal();'>&lt;";
   out += "<td colspan=3>";
+  out += y
+  out += "/";
   out += (m + 1);
-  out += "월";
   out += "<td colspan=2 onclick='cur_year="+next_y+"; cur_mont="+next_m+"; update_cal();'>&gt;";
   out += "<tr>";
   for (i=0; i<7; i++)
