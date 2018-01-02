@@ -27,14 +27,16 @@ $app->get('/gantt/{name}', function (Request $request, Response $response, array
 
     $dbname = __DIR__.'/gantt/db/'.$args['name'];
     if (is_file ($dbname))
+    {
 	    $template = "view.phtml";
+
+	    $args = setArgs ($args);
+    }
     else
     {
 	    $logger->debug ("no database.");
 	    $template = "view_nodb.phtml";
     }
-
-    $args = setArgs ($args);
 
     return $this->renderer->render($response, $template, $args);
 });
@@ -50,6 +52,7 @@ $app->get('/gantt/{name}/init', function (Request $request, Response $response, 
     {
 	    $logger->info ("initialize database..");
 	    unlink ($dbname);
+	    mkdir (__DIR__.'/gantt/db');
 	    $db = getConnection ($args['name']);
 	    $sqls = array(
 "CREATE TABLE `gantt_links` (
@@ -182,15 +185,42 @@ $app->get('/gantt/{name}/user', function (Request $request, Response $response, 
 $app->post('/gantt/{name}/user', function (Request $request, Response $response, array $args) {
     global $logger;
 
+    $logger->debug ("users_add : ".$request->getParam("users_add"));
+    $logger->debug ("users_del : ".$request->getParam("users_del"));
+
     $db = getConnection ($args['name']);
 
-    $logger->debug ("workday : ".$request->getParam("workday"));
-    $logger->debug ("holidays : ".$request->getParam("holidays"));
+    $add = explode(",", $request->getParam("users_add"));
+    foreach($add as $name)
+    {
+      if ($name == "")
+        continue;
+      $logger->debug ("add : $name");
+
+      $query="INSERT INTO user(name) VALUES (:name)";
+      $logger->debug ($query);
+      $db->prepare($query)->execute([':name' => $name]);
+    }
+
+    if (0)
+    {
+      $del = explode(",", $request->getParam("users_del"));
+      foreach($del as $name)
+      {
+        if ($name == "")
+          continue;
+        $logger->debug ("del : $name");
+
+        $query="INSERT INTO user(name) VALUES (:name)";
+        $logger->debug ($query, true);
+        $db->prepare($query)->execute([':name' => $name]);
+      }
+    }
 
     $args = setArgs ($args);
 
     $this->renderer->setTemplatePath(__DIR__.'/gantt');
-    return $this->renderer->render($response, 'calendar.phtml', $args);
+    return $this->renderer->render($response, 'user.phtml', $args);
 });
 
 function getConnection($name)
@@ -412,3 +442,4 @@ function deleteLink($request, $response, $args)
 		"action"=>"deleted"
 	]);
 }
+// vim:set sw=2 et:

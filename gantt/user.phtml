@@ -9,13 +9,13 @@
 </head>
 <body>
 <h1><?php echo $name; ?> 근무자 설정</h1>
-<form action="/gantt/<?php echo $name; ?>/user" method=post>
-<input type=hidden name=users_add value="">
-<input type=hidden name=users_del value="">
-<input type=submit>
+<form method=post>
+<input type=hidden id="input_users_add" name="users_add" value="">
+<input type=hidden id="input_users_del" name="users_del" value="">
+<input type=submit onclick="submit_click();">
 </form>
 <h2>근무자 목록</h2>
-새로운 근무자 <input type=text>
+새로운 근무자 <input id="input_name" type=text onkeypress="return check_input_key(event)">
 <div id="users"></div>
 <script type="text/javascript">
 
@@ -31,6 +31,49 @@ foreach ($users as $user)
 }
 ?>
 ];
+var users_org;
+
+function submit_click()
+{
+  //console.log ("submit click");
+
+  var org = [];
+  var mod = [];
+
+  for(var i=0; i<users_org.length; i++)
+    org.push(users_org[i]['name']);
+  for(var i=0; i<users.length; i++)
+    mod.push(users[i]['name']);
+
+  //console.log ("org :" + org.join(','));
+  //console.log ("mod :" + mod.join(','));
+
+  added = mod.filter(function(v){
+    return org.indexOf(v) < 0;
+  });
+  deled = org.filter(function(v){
+    return mod.indexOf(v) < 0;
+  });
+
+  document.getElementById("input_users_add").value = added.join(",");
+  document.getElementById("input_users_del").value = deled.join(",");
+
+  console.log ("add :" + document.getElementById("input_users_add").value);
+  console.log ("del :" + document.getElementById("input_users_del").value);
+}
+
+function check_input_key(e)
+{
+  //console.log("event : " + e);
+  if (e.keyCode == 13)
+  {
+    var name = document.getElementById("input_name").value;
+
+    //console.log("got name : " + name);
+    add_user(name);
+    document.getElementById("input_name").value = "";
+  }
+}
 
 function update_list()
 {
@@ -50,15 +93,55 @@ function update_list()
 
 function add_user(name)
 {
+  //console.log ("input name : " + name);
+  names = name.split(",");
+  for(var i=0; i<names.length; i++)
+  {
+    names[i].trim();
+    if (names[i] == '')
+      continue;
+
+    var found_same = false;
+    for(var j=0; j<users.length; j++)
+    {
+      if(users[j]['name'] == names[i])
+      {
+        found_same = true;
+        break;
+      }
+    }
+    if(found_same)
+      continue;
+
+    console.log ("add name : "+names[i]);
+    users.push({ id:-1, name:names[i] });
+  }
+
+  update_list();
 }
 
 function del_user(name)
 {
+  console.log ("del user : " + name);
+
+  var found_same = false;
+  for(var i=0; i<users.length; i++)
+  {
+    if(users[i]['name'] == name)
+    {
+      users.splice(i, 1);
+      break;
+    }
+  }
+
+  update_list();
 }
 
 (function()
 {
+  users_org = users.slice();
   update_list();
 })();
 </script>
 </body>
+<!-- vim:set sw=2 et: -->
