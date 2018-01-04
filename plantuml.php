@@ -184,11 +184,8 @@ $app->post('/plantuml/update', function (Request $request, Response $response, a
     else
       $logger->error ("cannot save $name.txt");
 
-
-    $args = get_edit_args ($name, $request, $args);
-
-    $this->renderer->setTemplatePath(__DIR__.'/plantuml');
-    return $this->renderer->render($response, "edit.phtml", $args);
+    $noimg = $request->getParam("noimg", false);
+    return $response->withRedirect("/plantuml/edit?name=$name&noimg=$noimg");
 });
 
 $app->get('/plantuml/fetch_repo', function (Request $request, Response $response, array $args) {
@@ -207,10 +204,8 @@ $app->get('/plantuml/fetch_repo', function (Request $request, Response $response
     foreach ($out as $line)
       $logger->debug ($line);
 
-    $args = get_edit_args ($name, $request, $args);
-
-    $this->renderer->setTemplatePath(__DIR__.'/plantuml');
-    return $this->renderer->render($response, "edit.phtml", $args);
+    $noimg = $request->getParam("noimg", false);
+    return $response->withRedirect("/plantuml/edit?name=$name&noimg=$noimg");
 });
 
 /* vim:set sw=2 et: */
