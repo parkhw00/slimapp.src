@@ -23,4 +23,5 @@ $app->get('/test/[{name}]', function (Request $request, Response $response, arra
 });
 
 require __DIR__ . '/gantt.php';
+require __DIR__ . '/plantuml.php';
 

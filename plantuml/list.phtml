@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<head>
+  <meta http-equiv="Content-type" content="text/html; charset=utf-8">
+</head>
+<body>
+  <h1>plantuml script list</h1>
+<?php
+if ($script_names)
+{
+  echo "<ul>";
+  foreach ($script_names as $name)
+  {
+    echo "<li><a href=\"javascript:void(0);\" onclick=\"show(document.getElementById('uml_display'), event, '$name')\">show</a> ";
+    echo "<a href=\"/plantuml/edit?&name=$name&noimg=$noimg\">$name</a>";
+  }
+  echo "</ul>";
+}
+else
+  echo "<p>no script</p>";
+?>
+<div id="uml_display"
+  style="display: none; position: absolute; left: 0; top: 0; background-color: white; border-style: solid; border-width: 4px; padding: 10px;"
+  onclick="document.getElementById('uml_display').style.display='none';"
+>uml_display contents</div>
+<script type="text/javascript">
+var show = function (id, event, name)
+{
+  var x = event.target || event.srcElement;
+
+  //id.style.left = x.offsetLeft + x.offsetWidth;
+  //id.style.left = 200;
+  //id.style.top = x.offsetTop + x.offsetHeight;
+  id.style.display = "block";
+  id.innerHTML = "<p>script name : " + name + "</p>";
+  id.innerHTML += "<img src='/plantuml_out/work/" + name + ".png' />";
+}
+</script>
+
+<form method="post" action=/plantuml/update">
+<input type="hidden" name="script" value="
+@startuml
+Alice -> Baaob: test
+@enduml
+">
+new script : <input type="text" name="name" value="username_filename">
+<input type="submit">
+</form>
+
+<p><?php echo $tail_message; ?></p>
+</body>
+<?php // vim:set sw=2 et: ?>
