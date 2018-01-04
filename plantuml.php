@@ -217,4 +217,69 @@ $app->get('/plantuml/fetch_repo/{name:.*}', function (Request $request, Response
     return $response->withRedirect(plantuml_link("edit", $name, ['noimg'=>$noimg]));
 });
 
+$app->get('/plantuml/watch/{name:.*}', function (Request $request, Response $response, array $args) {
+    global $logger;
+
+    $name = $args['name'];
+
+    $this->renderer->setTemplatePath(__DIR__.'/plantuml');
+    return $this->renderer->render($response, "watch.phtml", $args);
+});
+
+$app->get('/plantuml/wait_changes/{name:.*}', function (Request $request, Response $response, array $args) {
+    global $logger;
+
+    $result = [
+      'return' => true,
+      'mtime' => 0,
+      'message' => 'none',
+      ];
+
+    $name = $args['name'];
+    $current_mtime = $request->getParam('mtime', 0);
+
+    $fd = inotify_init();
+    if ($fd !== FALSE)
+    {
+      $file = __DIR__."/../public/plantuml_out/work/$name.txt";
+
+      $watch_descriptors = inotify_add_watch($fd, $file, IN_ALL_EVENTS);
+
+      $mtime = filetime($file);
+      if ($mtime == $current_mtime)
+      {
+        $logger->debug("read..");
+        $events = inotify_read($fd);
+        $logger->debug("read.. done.");
+
+        foreach($events as $event => $evdetails)
+        {
+          $logger->debug("event ".var_export($evdetails,true));
+          switch (true)
+          {
+          case ($evdetails['mask'] & IN_MODIFY):
+          case ($evdetails['mask'] & IN_MOVE):
+          case ($evdetails['mask'] & IN_MOVE_SELF):
+          case ($evdetails['mask'] & IN_DELETE):
+          case ($evdetails['mask'] & IN_DELETE_SELF):
+            break;
+          }
+
+          break;
+        }
+        $result['mtime'] = filetime($file);
+      }
+
+      inotify_rm_watch ($fd, $watch_descriptors);
+      fclose ($fd);
+    }
+    else
+    {
+      $logger->error ("inotify_init failed");
+      $result['return'] = false;
+    }
+
+    return $response->withJson($result);
+});
+
 /* vim:set sw=2 et: */

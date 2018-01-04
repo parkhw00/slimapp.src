@@ -6,7 +6,7 @@
 <p>edit script : <?php
 echo $name;
 if ($noimg != "")
-  echo ", <a href=\"/plantuml_out/work/$name.png\">image link</a></p>";
+  echo ", <a href=\"/plantuml_out/work/$name.png\">image</a>, <a href=\"".plantuml_link('watch', $name)."\">watch</a></p>";
 else
   echo "</p><p><img src=\"/plantuml_out/work/$name.png\"></p>";
 ?></p>
