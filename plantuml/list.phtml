@@ -11,7 +11,7 @@ if ($script_names)
   foreach ($script_names as $name)
   {
     echo "<li><a href=\"javascript:void(0);\" onclick=\"show(document.getElementById('uml_display'), event, '$name')\">show</a> ";
-    echo "<a href=\"/plantuml/edit?&name=$name&noimg=$noimg\">$name</a>";
+    echo "<a href=\"".plantuml_link('edit',$name,['noimg'=>$noimg])."\">$name</a>";
   }
   echo "</ul>";
 }

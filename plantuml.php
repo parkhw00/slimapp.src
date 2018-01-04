@@ -38,6 +38,15 @@ function get_repo_name($name)
   ];
 }
 
+function plantuml_link($do, $name, $args = array())
+{
+  $r = "/plantuml/$do/$name?";
+  foreach ($args as $n => $v)
+    $r .= "&$n=$v";
+
+  return $r;
+}
+
 $app->get('/plantuml', function (Request $request, Response $response, array $args) {
     global $logger;
     global $plantuml_tail;
@@ -53,7 +62,7 @@ $app->get('/plantuml', function (Request $request, Response $response, array $ar
       $files = scandir (__DIR__.$search_dir);
       foreach ($files as $file)
       {
-        $logger->debug ("file : $file");
+        //$logger->debug ("file : $file");
         $ext = strrchr ($file, ".");
         if ($ext == ".txt")
           array_push ($script_names, substr ("$prefix/$file", 0, -4));
@@ -62,9 +71,9 @@ $app->get('/plantuml', function (Request $request, Response $response, array $ar
 
     $args['tail_message'] = $plantuml_tail;
     $args['script_names'] = $script_names;
+    $args['noimg'] = $request->getParam("noimg", false);
 
     $this->renderer->setTemplatePath(__DIR__.'/plantuml');
-
     return $this->renderer->render($response, "list.phtml", $args);
 });
 
@@ -119,22 +128,22 @@ Alice -> Baaob: \"empty script..\"
   return $args;
 }
 
-$app->get('/plantuml/edit', function (Request $request, Response $response, array $args) {
+$app->get('/plantuml/edit/{name:.*}', function (Request $request, Response $response, array $args) {
     global $logger;
     global $plantuml_tail;
 
-    $name = $request->getParam("name", "unknown");
+    $name = $args['name'];
     $args = get_edit_args ($name, $request, $args);
 
     $this->renderer->setTemplatePath(__DIR__.'/plantuml');
     return $this->renderer->render($response, "edit.phtml", $args);
 });
 
-$app->post('/plantuml/update', function (Request $request, Response $response, array $args) {
+$app->post('/plantuml/update/{name:.*}', function (Request $request, Response $response, array $args) {
     global $logger;
     global $plantuml_tail;
 
-    $name = $request->getParam("name", "unknown");
+    $name = $args['name'];
     $script = $request->getParam("script", "unknown");
     $message = $request->getParam("message", "unknown");
 
@@ -185,14 +194,14 @@ $app->post('/plantuml/update', function (Request $request, Response $response, a
       $logger->error ("cannot save $name.txt");
 
     $noimg = $request->getParam("noimg", false);
-    return $response->withRedirect("/plantuml/edit?name=$name&noimg=$noimg");
+    return $response->withRedirect(plantuml_link("edit", $name, ['noimg'=>$noimg]));
 });
 
-$app->get('/plantuml/fetch_repo', function (Request $request, Response $response, array $args) {
+$app->get('/plantuml/fetch_repo/{name:.*}', function (Request $request, Response $response, array $args) {
     global $logger;
     global $plantuml_tail;
 
-    $name = $request->getParam("name", "unknown");
+    $name = $args['name'];
     $repo_name = get_repo_name($name);
 
     $exec_script = "sh -c 'cd ".__DIR__."/plantuml/work/$repo_name->repo/ "
@@ -205,7 +214,7 @@ $app->get('/plantuml/fetch_repo', function (Request $request, Response $response
       $logger->debug ($line);
 
     $noimg = $request->getParam("noimg", false);
-    return $response->withRedirect("/plantuml/edit?name=$name&noimg=$noimg");
+    return $response->withRedirect(plantuml_link("edit", $name, ['noimg'=>$noimg]));
 });
 
 /* vim:set sw=2 et: */

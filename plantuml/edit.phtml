@@ -13,7 +13,7 @@ else
 <textarea rows=<?php echo "$rows"; ?> cols=80 name="script" form="updateform">
 <?php echo htmlentities ($script_text); ?>
 </textarea><br />
-<form method="post" action="/plantuml/update?&<?php echo "name=$name&noimg=$noimg"; ?>" id="updateform">
+<form method="post" action="<?php echo plantuml_link('update', $name, ['noimg'=>$noimg]); ?>" id="updateform">
 <input type="submit">
 </form>
 
@@ -24,10 +24,10 @@ else
 </p>
 
 <p><a href="/plantuml?&<?php echo "noimg=$noimg"; ?>">script list</a>...<br />
-<a href="/plantuml/edit?&<?php echo "name=$name&noimg=$noimg"; ?>">reset and refresh</a> this page<br />
-<a href="/plantuml/fetch_repo?&<?php echo "name=$name&noimg=$noimg"; ?>">fetch updated from repository</a><br />
-<a href="/plantuml/edit?&<?php echo "name=$name&noimg=true"; ?>">donot display image</a><br />
-<a href="/plantuml/edit?&<?php echo "name=$name&noimg="; ?>">display image</a><br />
+<a href="<?php echo plantuml_link('edit', $name, ['noimg'=>$noimg]); ?>">reset and refresh</a> this page<br />
+<a href="<?php echo plantuml_link('fetch_repo', $name, ['noimg'=>$noimg]); ?>">fetch updated from repository</a><br />
+<a href="<?php echo plantuml_link('fetch_repo', $name, ['noimg'=>'true']); ?>">donot display image</a><br />
+<a href="<?php echo plantuml_link('fetch_repo', $name, ['noimg'=>'false']); ?>">display image</a><br />
 <p><?php echo $tail_message; ?></p>
 </body>
 <?php // vim:set sw=2 et: ?>

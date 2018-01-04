@@ -13,7 +13,7 @@ $app->get('/', function (Request $request, Response $response, array $args) {
     return $this->renderer->render($response, 'index.phtml', $args);
 });
 
-$app->get('/test/[{name}]', function (Request $request, Response $response, array $args) {
+$app->get('/test/[{name:.*}]', function (Request $request, Response $response, array $args) {
     // Sample log message
     $this->logger->debug(var_export ($args, true));
     $this->logger->debug("name : ".$args['name']);
