@@ -1,53 +1,47 @@
 <!DOCTYPE html>
 <head>
+  <title><?php echo $name; ?></title>
   <meta http-equiv="Content-type" content="text/html; charset=utf-8">
+  <style type="text/css">
+img {
+  vertical-align: middle;
+  //margin: auto;
+}
+  </style>
 </head>
 <body>
-<img id="watch_img" src="<?php echo plantuml_img_link($name); ?>"></p>
+<div id="watch_title"><?php echo $mtime; ?></div>
+<img id="watch_img" src="<?php echo plantuml_img_link($name)."?mtime=$mtime"; ?>" onload="check_changes();">
 <script>
 
-var httpRequest;
 var current_mtime = <?php echo $mtime; ?>;
 
-function makeRequest(url) {
-  if (window.XMLHttpRequest) { // Mozilla, Safari, ...
-    httpRequest = new XMLHttpRequest();
-  } else if (window.ActiveXObject) { // IE
-    try {
-      httpRequest = new ActiveXObject("Msxml2.XMLHTTP");
-    } 
-    catch (e) {
-      try {
-        httpRequest = new ActiveXObject("Microsoft.XMLHTTP");
-      } 
-      catch (e) {}
-    }
-  }
+function check_changes()
+{
+  url = '/plantuml/wait_changes/<?php echo $name; ?>?mtime='+current_mtime;
+  console.log('fetch url : '+url);
 
-  if (!httpRequest) {
-    alert('Giving up :( Cannot create an XMLHTTP instance');
-    return false;
-  }
+  fetch(url).then(function(response) {
+    response.json().then(function(json) {
+      if (json.mtime != 0 && json.mtime != current_mtime)
+      {
+        console.log('mtime changes from '+current_mtime+' to '+json.mtime+'. message : '+json.message);
 
-  console.log ('make request url : '+url);
-  httpRequest.onreadystatechange = imageChanged;
-  httpRequest.open('GET', url);
-  httpRequest.send();
-}
-
-function imageChanged() {
-  if (httpRequest.readyState === 4) {
-    if (httpRequest.status === 200) {
-      alert(httpRequest.responseText);
-    } else {
-      alert('There was a problem with the request.');
-    }
-  }
+        current_mtime = json.mtime;
+        document.getElementById('watch_img').src='<?php echo plantuml_img_link($name); ?>?mtime='+current_mtime;
+        document.getElementById('watch_title').innerHTML=current_mtime;
+      }
+      else
+      {
+        console.log('mtime : '+json.mtime+'. message : '+json.message);
+        check_changes();
+      }
+    });
+  });
 }
 
 (function()
 {
-  makeRequest('/plantuml/wait_changes/<?php echo $name; ?>?mtime='+current_mtime);
 })();
 </script>
 <?php

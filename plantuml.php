@@ -4,7 +4,13 @@ use Slim\Http\Request;
 use Slim\Http\Response;
 
 // config will provide $myid, $mypass
-include 'config.php';
+if(is_file(__DIR__.'config.php'))
+  include 'config.php';
+else
+{
+  $myid="";
+  $mypass="";
+}
 
 $repo_list = array(
   'scripts'=>"http://$myid:$mypass@mod.lge.com/hub/hyonwoo.park/plantuml.git",
@@ -13,7 +19,7 @@ $repo_list = array(
 
 $plantuml_tail  = "see <a href=\"http://plantuml.com/\">plantuml</a> for examples.<br />";
 $plantuml_tail .= "histories will be recorded on <a href=\"http://mod.lge.com/hub/hyonwoo.park/plantuml/tree/master\">git</a>.<br />";
-$plantuml_tail .= "get <a href=\"?do=get_source\">source code</a>.";
+$plantuml_tail .= "get <a href=\"https://github.com/parkhw00/slimapp.src\">source code</a>.";
 
 function get_repo_name($name)
 {
@@ -26,6 +32,12 @@ function get_repo_name($name)
     $org = $name;
     $name = substr($org, $pos+1);
     $repo = substr($org, 0, $pos);
+
+    if (!array_key_exists($repo, $repo_list))
+    {
+      $repo = 'scripts';
+      $name = $org;
+    }
   }
   else
     $repo = 'scripts';
@@ -62,6 +74,37 @@ function plantuml_txt($name)
   return __DIR__."/plantuml/work/$name.txt";
 }
 
+function scan_dir($dir, &$names)
+{
+  global $logger;
+
+  $logger->debug ("search dir : $dir");
+  $files = scandir (__DIR__."/plantuml/work/$dir");
+  foreach ($files as $file)
+  {
+    //$logger->debug ("file : $file");
+    if ($file[0] == ".")
+      continue;
+
+    $fullpath = __DIR__."/plantuml/work/$dir/$file";
+    if (is_dir($fullpath))
+    {
+      scan_dir("$dir/$file", $names);
+      continue;
+    }
+
+    if (is_file($fullpath))
+    {
+      $ext = strrchr ($file, ".");
+      if ($ext == ".txt")
+      {
+        //$logger->debug ("push : $dir/$file");
+        array_push ($names, substr ("$dir/$file", 0, -4));
+      }
+    }
+  }
+}
+
 $app->get('/plantuml', function (Request $request, Response $response, array $args) {
     global $logger;
     global $plantuml_tail;
@@ -72,16 +115,7 @@ $app->get('/plantuml', function (Request $request, Response $response, array $ar
       'docs/audio_module/plantuml',
     ) as $prefix)
     {
-      $search_dir = "/plantuml/work/$prefix";
-      $logger->debug ("search dir : $search_dir");
-      $files = scandir (__DIR__.$search_dir);
-      foreach ($files as $file)
-      {
-        //$logger->debug ("file : $file");
-        $ext = strrchr ($file, ".");
-        if ($ext == ".txt")
-          array_push ($script_names, substr ("$prefix/$file", 0, -4));
-      }
+      scan_dir ($prefix, $script_names);
     }
 
     $args['tail_message'] = $plantuml_tail;
@@ -159,19 +193,31 @@ $app->post('/plantuml/update/{name:.*}', function (Request $request, Response $r
     global $plantuml_tail;
 
     $name = $args['name'];
+    $r = get_repo_name($name);
+    $name = "$r->repo/$r->name";
     $script = $request->getParam("script", "unknown");
-    $message = $request->getParam("message", "unknown");
+    $message = $request->getParam("message", "");
+
+    $srcdir = dirname(plantuml_txt($name));
+    $logger->debug ("srcdir : $srcdir");
+    if (!is_dir($srcdir))
+      mkdir($srcdir, 0777, true);
 
     $ret = file_put_contents (plantuml_txt($name), $script);
     if ($ret)
     {
       $src = plantuml_txt($name);
-      $outdir = dirname(plantuml_img($name));
+      $outfile = plantuml_img($name);
+      $outdir = dirname($outfile);
+      $outfile_temp = tempnam($outdir, "__temp.");
       $logger->debug ("outdir : $outdir");
-      mkdir($outdir, 0777, true);
-      $exec_cmd = "java -jar ".__DIR__."/plantuml/plantuml.jar \"$src\" -o \"$outdir\"";
+      if (!is_dir($outdir))
+        mkdir($outdir, 0777, true);
+      $exec_cmd = "java -jar ".__DIR__."/plantuml/plantuml.jar -p < \"$src\" > \"$outfile_temp\"";
       $logger->debug ("exec_cmd : $exec_cmd");
       exec ($exec_cmd);
+      rename($outfile_temp, $outfile);
+
       if ($message != "")
       {
         $logger->debug ("committing...");
@@ -261,30 +307,63 @@ $app->get('/plantuml/wait_changes/{name:.*}', function (Request $request, Respon
     {
       $file = plantuml_img($name);
 
-      $watch_descriptors = inotify_add_watch($fd, $file, IN_ALL_EVENTS);
+      $in_events =
+        IN_MODIFY |
+        IN_MOVE |
+        IN_MOVE_SELF |
+        IN_DELETE |
+        IN_DELETE_SELF;
+      $watch_descriptors = inotify_add_watch($fd, $file, $in_events);
 
       $mtime = filemtime($file);
       if ($mtime == $current_mtime)
       {
-        $logger->debug("read..");
-        $events = inotify_read($fd);
-        $logger->debug("read.. done.");
-
-        foreach($events as $event => $evdetails)
+        $read = array($fd);
+        $write = array();
+        $except = array();
+        $logger->debug("wait.. $name current $mtime");
+        $num = stream_select($read, $write, $except, 60);
+        $logger->debug("wait.. $name done.");
+        if($num === false)
         {
-          $logger->debug("event ".var_export($evdetails,true));
-          switch (true)
+          $result['message'] = 'error';
+        }
+        else if($num === 0)
+        {
+          $result['message'] = 'timeout';
+        }
+        else
+        {
+          $events = inotify_read($fd);
+
+          $message = [];
+          foreach($events as $event => $evdetails)
           {
-          case ($evdetails['mask'] & IN_MODIFY):
-          case ($evdetails['mask'] & IN_MOVE):
-          case ($evdetails['mask'] & IN_MOVE_SELF):
-          case ($evdetails['mask'] & IN_DELETE):
-          case ($evdetails['mask'] & IN_DELETE_SELF):
+            $logger->debug("event ".var_export($evdetails,true));
+            switch (true)
+            {
+            case ($evdetails['mask'] & IN_MODIFY):
+              array_push($message, "modify");
+              break;
+            case ($evdetails['mask'] & IN_MOVE):
+              array_push($message, "move");
+              break;
+            case ($evdetails['mask'] & IN_MOVE_SELF):
+              array_push($message, "move_self");
+              break;
+            case ($evdetails['mask'] & IN_DELETE):
+              array_push($message, "delete");
+              break;
+            case ($evdetails['mask'] & IN_DELETE_SELF):
+              array_push($message, "delete_self");
+              break;
+            }
+
             break;
           }
-
-          break;
+          $result['message'] = join(",", $message);
         }
+
         $result['mtime'] = filemtime($file);
       }
 
@@ -296,6 +375,7 @@ $app->get('/plantuml/wait_changes/{name:.*}', function (Request $request, Respon
       $logger->error ("inotify_init failed");
       $result['return'] = false;
     }
+    $logger->debug ("result : " . var_export($result, true));
 
     return $response->withJson($result);
 });
