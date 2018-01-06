@@ -34,15 +34,31 @@ var show = function (id, event, name)
   id.innerHTML = "<p>script name : " + name + "</p>";
   id.innerHTML += "<img src='/plantuml_out/work/" + name + ".png' />";
 }
+
+function new_script()
+{
+  var form = document.getElementById("form_new_script");
+  var name = document.getElementById("form_new_script_name").value;
+
+  console.log("name : "+name);
+  if (name == "")
+  {
+    alert("no name");
+    return false;
+  }
+
+  form.action = "/plantuml/update/" + name;
+  return true;
+}
 </script>
 
-<form method="post" action=/plantuml/update">
+<form id="form_new_script" method="post" onsubmit="return new_script();">
 <input type="hidden" name="script" value="
 @startuml
 Alice -> Baaob: test
 @enduml
 ">
-new script : <input type="text" name="name" value="username_filename">
+new script : <input id="form_new_script_name" type="text" name="name" value="username_filename">
 <input type="submit">
 </form>
 

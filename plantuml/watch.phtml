@@ -3,7 +3,53 @@
   <meta http-equiv="Content-type" content="text/html; charset=utf-8">
 </head>
 <body>
-<img src="/plantuml_out/work/<?php echo $name; ?>.png"></p>
+<img id="watch_img" src="<?php echo plantuml_img_link($name); ?>"></p>
+<script>
+
+var httpRequest;
+var current_mtime = <?php echo $mtime; ?>;
+
+function makeRequest(url) {
+  if (window.XMLHttpRequest) { // Mozilla, Safari, ...
+    httpRequest = new XMLHttpRequest();
+  } else if (window.ActiveXObject) { // IE
+    try {
+      httpRequest = new ActiveXObject("Msxml2.XMLHTTP");
+    } 
+    catch (e) {
+      try {
+        httpRequest = new ActiveXObject("Microsoft.XMLHTTP");
+      } 
+      catch (e) {}
+    }
+  }
+
+  if (!httpRequest) {
+    alert('Giving up :( Cannot create an XMLHTTP instance');
+    return false;
+  }
+
+  console.log ('make request url : '+url);
+  httpRequest.onreadystatechange = imageChanged;
+  httpRequest.open('GET', url);
+  httpRequest.send();
+}
+
+function imageChanged() {
+  if (httpRequest.readyState === 4) {
+    if (httpRequest.status === 200) {
+      alert(httpRequest.responseText);
+    } else {
+      alert('There was a problem with the request.');
+    }
+  }
+}
+
+(function()
+{
+  makeRequest('/plantuml/wait_changes/<?php echo $name; ?>?mtime='+current_mtime);
+})();
+</script>
 <?php
 ?>
 </body>

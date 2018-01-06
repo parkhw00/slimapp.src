@@ -47,6 +47,21 @@ function plantuml_link($do, $name, $args = array())
   return $r;
 }
 
+function plantuml_img_link($name)
+{
+  return "/plantuml_out/work/$name.png";
+}
+
+function plantuml_img($name)
+{
+  return __DIR__."/../public/plantuml_out/work/$name.png";
+}
+
+function plantuml_txt($name)
+{
+  return __DIR__."/plantuml/work/$name.txt";
+}
+
 $app->get('/plantuml', function (Request $request, Response $response, array $args) {
     global $logger;
     global $plantuml_tail;
@@ -82,9 +97,9 @@ function get_edit_args($name, $request, $args)
   global $logger;
   global $plantuml_tail;
 
-  $filename = "/plantuml/work/$name.txt";
+  $filename = plantuml_txt($name);
   $logger->debug ("filename : $filename");
-  $script_text = file_get_contents (__DIR__ . $filename);
+  $script_text = file_get_contents ($filename);
   //$script_text = "aa";
   if ($script_text != "")
   {
@@ -147,14 +162,16 @@ $app->post('/plantuml/update/{name:.*}', function (Request $request, Response $r
     $script = $request->getParam("script", "unknown");
     $message = $request->getParam("message", "unknown");
 
-    $ret = file_put_contents (__DIR__ ."/plantuml/work/$name.txt", $script);
+    $ret = file_put_contents (plantuml_txt($name), $script);
     if ($ret)
     {
-      $src = __DIR__."/plantuml/work/$name.txt";
-      $outdir = __DIR__.dirname("/../public/plantuml_out/work/$name.txt");
+      $src = plantuml_txt($name);
+      $outdir = dirname(plantuml_img($name));
       $logger->debug ("outdir : $outdir");
       mkdir($outdir, 0777, true);
-      exec ("java -jar ".__DIR__."/plantuml/plantuml.jar \"$src\" -o \"$outdir\"");
+      $exec_cmd = "java -jar ".__DIR__."/plantuml/plantuml.jar \"$src\" -o \"$outdir\"";
+      $logger->debug ("exec_cmd : $exec_cmd");
+      exec ($exec_cmd);
       if ($message != "")
       {
         $logger->debug ("committing...");
@@ -221,6 +238,7 @@ $app->get('/plantuml/watch/{name:.*}', function (Request $request, Response $res
     global $logger;
 
     $name = $args['name'];
+    $args['mtime'] = filemtime(plantuml_img($name));
 
     $this->renderer->setTemplatePath(__DIR__.'/plantuml');
     return $this->renderer->render($response, "watch.phtml", $args);
@@ -241,11 +259,11 @@ $app->get('/plantuml/wait_changes/{name:.*}', function (Request $request, Respon
     $fd = inotify_init();
     if ($fd !== FALSE)
     {
-      $file = __DIR__."/../public/plantuml_out/work/$name.txt";
+      $file = plantuml_img($name);
 
       $watch_descriptors = inotify_add_watch($fd, $file, IN_ALL_EVENTS);
 
-      $mtime = filetime($file);
+      $mtime = filemtime($file);
       if ($mtime == $current_mtime)
       {
         $logger->debug("read..");
@@ -267,7 +285,7 @@ $app->get('/plantuml/wait_changes/{name:.*}', function (Request $request, Respon
 
           break;
         }
-        $result['mtime'] = filetime($file);
+        $result['mtime'] = filemtime($file);
       }
 
       inotify_rm_watch ($fd, $watch_descriptors);

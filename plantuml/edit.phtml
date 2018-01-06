@@ -26,8 +26,8 @@ else
 <p><a href="/plantuml?&<?php echo "noimg=$noimg"; ?>">script list</a>...<br />
 <a href="<?php echo plantuml_link('edit', $name, ['noimg'=>$noimg]); ?>">reset and refresh</a> this page<br />
 <a href="<?php echo plantuml_link('fetch_repo', $name, ['noimg'=>$noimg]); ?>">fetch updated from repository</a><br />
-<a href="<?php echo plantuml_link('fetch_repo', $name, ['noimg'=>'true']); ?>">donot display image</a><br />
-<a href="<?php echo plantuml_link('fetch_repo', $name, ['noimg'=>'false']); ?>">display image</a><br />
+<a href="<?php echo plantuml_link('edit', $name, ['noimg'=>'true']); ?>">donot display image</a><br />
+<a href="<?php echo plantuml_link('edit', $name, ['noimg'=>'false']); ?>">display image</a><br />
 <p><?php echo $tail_message; ?></p>
 </body>
 <?php // vim:set sw=2 et: ?>
